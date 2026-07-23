@@ -136,90 +136,92 @@ export default function Interview() {
         <TimerGauge durationSeconds={timerSeconds} onExpire={() => handleSubmit()} />
       )}
 
-      <div className="interview-layout-grid">
-        <div className="interview-main">
-          <div className="card notecard">
-            <span className="notecard__pin" aria-hidden="true" />
-            <p className="notecard__eyebrow">Interviewer asks</p>
-            <h2 className="notecard__question">{question || "Loading question..."}</h2>
+      {/* Top Header Row: Question Notecard + Compact Webcam Feed */}
+      <div className="interview-top-grid">
+        <div className="card notecard">
+          <span className="notecard__pin" aria-hidden="true" />
+          <p className="notecard__eyebrow">Interviewer asks</p>
+          <h2 className="notecard__question">{question || "Loading question..."}</h2>
 
-            <VoiceInterviewer text={question} autoPlay={true} />
-          </div>
+          <VoiceInterviewer text={question} autoPlay={true} />
+        </div>
 
-          {error && <div className="alert">{error}</div>}
+        <div className="interview-video-sidebar">
+          <WebcamPreview />
+        </div>
+      </div>
 
-          {!evaluation && (
-            <form className="answer-form" onSubmit={handleSubmit}>
-              <div className="answer-header">
-                <label className="answer-form__label" htmlFor="answer">
-                  Your Response
-                </label>
-                <AudioWaveform active={listening} />
-              </div>
+      {/* Full-width Main Content: Answer Form / Evaluation Report */}
+      <div className="interview-main-content">
+        {error && <div className="alert">{error}</div>}
 
-              {sessionMode === "coding" ? (
-                <CodeSandbox value={answer} onChange={setAnswer} />
-              ) : (
-                <textarea
-                  id="answer"
-                  className="answer-form__textarea"
-                  rows={7}
-                  placeholder="Type your answer here, or press 'Speak answer' to dictate..."
-                  value={answer}
-                  onChange={(e) => setAnswer(e.target.value)}
-                  disabled={submitting}
-                />
-              )}
+        {!evaluation && (
+          <form className="answer-form" onSubmit={handleSubmit}>
+            <div className="answer-header">
+              <label className="answer-form__label" htmlFor="answer">
+                Your Response
+              </label>
+              <AudioWaveform active={listening} />
+            </div>
 
-              <div className="answer-form__actions">
-                {SpeechRecognitionAPI && sessionMode !== "coding" && (
-                  <button
-                    type="button"
-                    className={`btn btn--ghost ${listening ? "is-listening" : ""}`}
-                    onClick={toggleListening}
-                  >
-                    <Icon name="mic" size={17} />
-                    {listening ? "Listening..." : "Speak answer"}
-                  </button>
-                )}
-                <button type="submit" className="btn btn--primary" disabled={submitting || !answer.trim()}>
-                  {submitting ? "Grading..." : "Submit answer"}
-                  <Icon name="arrowRight" size={16} />
+            {sessionMode === "coding" ? (
+              <CodeSandbox value={answer} onChange={setAnswer} />
+            ) : (
+              <textarea
+                id="answer"
+                className="answer-form__textarea"
+                rows={6}
+                placeholder="Type your answer here, or press 'Speak answer' to dictate..."
+                value={answer}
+                onChange={(e) => setAnswer(e.target.value)}
+                disabled={submitting}
+              />
+            )}
+
+            <div className="answer-form__actions">
+              {SpeechRecognitionAPI && sessionMode !== "coding" && (
+                <button
+                  type="button"
+                  className={`btn btn--ghost ${listening ? "is-listening" : ""}`}
+                  onClick={toggleListening}
+                >
+                  <Icon name="mic" size={17} />
+                  {listening ? "Listening..." : "Speak answer"}
                 </button>
-              </div>
-              {submitting && <Loader text="Evaluating answer depth and communication..." />}
-            </form>
-          )}
-
-          {evaluation && (
-            <div className="card eval-card">
-              <p className="eval-card__eyebrow">
-                <Icon name="check" size={16} /> AI Evaluation & Feedback
-              </p>
-              <div className="eval-card__scores">
-                <ScoreBar label="Communication" value={evaluation.score.communication} />
-                <ScoreBar label="Technical depth" value={evaluation.score.technicalDepth} />
-                <ScoreBar label="Confidence" value={evaluation.score.confidence} />
-              </div>
-              <p className="eval-card__feedback">{evaluation.feedback}</p>
-              {evaluation.improvementTips?.length > 0 && (
-                <ul className="eval-card__tips">
-                  {evaluation.improvementTips.map((tip, i) => (
-                    <li key={i}>{tip}</li>
-                  ))}
-                </ul>
               )}
-              <button className="btn btn--primary" onClick={handleContinue}>
-                {isComplete ? "View full report card" : "Next question"}
+              <button type="submit" className="btn btn--primary" disabled={submitting || !answer.trim()}>
+                {submitting ? "Grading..." : "Submit answer"}
                 <Icon name="arrowRight" size={16} />
               </button>
             </div>
-          )}
-        </div>
+            {submitting && <Loader text="Evaluating answer depth and communication..." />}
+          </form>
+        )}
 
-        <div className="interview-sidebar">
-          <WebcamPreview />
-        </div>
+        {evaluation && (
+          <div className="card eval-card">
+            <p className="eval-card__eyebrow">
+              <Icon name="check" size={16} /> AI Evaluation & Feedback
+            </p>
+            <div className="eval-card__scores">
+              <ScoreBar label="Communication" value={evaluation.score.communication} />
+              <ScoreBar label="Technical depth" value={evaluation.score.technicalDepth} />
+              <ScoreBar label="Confidence" value={evaluation.score.confidence} />
+            </div>
+            <p className="eval-card__feedback">{evaluation.feedback}</p>
+            {evaluation.improvementTips?.length > 0 && (
+              <ul className="eval-card__tips">
+                {evaluation.improvementTips.map((tip, i) => (
+                  <li key={i}>{tip}</li>
+                ))}
+              </ul>
+            )}
+            <button className="btn btn--primary" onClick={handleContinue}>
+              {isComplete ? "View full report card" : "Next question"}
+              <Icon name="arrowRight" size={16} />
+            </button>
+          </div>
+        )}
       </div>
     </section>
   );

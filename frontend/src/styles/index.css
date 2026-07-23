@@ -78,7 +78,7 @@ button {
    LAYOUT
    ============================================================ */
 .app {
-  max-width: 1080px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 0 1.75rem 4rem;
   min-height: 100vh;
@@ -542,9 +542,9 @@ button {
 }
 
 .eval-card__scores {
-  display: flex;
-  flex-direction: column;
-  gap: 0.7rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
 }
 
 .eval-card__feedback {
@@ -1141,15 +1141,26 @@ button {
   100% { height: 20px; }
 }
 
-/* Interview Grid Layout */
-.interview-layout-grid {
+/* Interview Layout */
+.interview-top-grid {
   display: grid;
   grid-template-columns: 1fr 240px;
-  gap: 1.5rem;
+  gap: 1.25rem;
+  align-items: start;
+  margin-bottom: 1.5rem;
+}
+
+.interview-video-sidebar {
+  width: 100%;
+}
+
+.interview-main-content {
+  width: 100%;
+  margin-top: 1rem;
 }
 
 @media (max-width: 850px) {
-  .interview-layout-grid {
+  .interview-top-grid {
     grid-template-columns: 1fr;
   }
 }

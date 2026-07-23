@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from "react";
 import Icon from "./Icon";
 
-export function VoiceInterviewer({ text, autoPlay = true }) {
+export function VoiceInterviewer({ text }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [voices, setVoices] = useState([]);
   const [selectedVoice, setSelectedVoice] = useState("");
   const [rate, setRate] = useState(1);
   const [isSupported, setIsSupported] = useState(true);
+  const [autoSpeak, setAutoSpeak] = useState(() => {
+    return localStorage.getItem("ai_auto_speak") !== "false";
+  });
 
   useEffect(() => {
     if (!("speechSynthesis" in window)) {
@@ -18,7 +21,6 @@ export function VoiceInterviewer({ text, autoPlay = true }) {
       const avail = window.speechSynthesis.getVoices();
       setVoices(avail);
       if (avail.length > 0 && !selectedVoice) {
-        // Pick an English voice if possible
         const englishVoice = avail.find((v) => v.lang.startsWith("en")) || avail[0];
         setSelectedVoice(englishVoice.name);
       }
@@ -37,10 +39,10 @@ export function VoiceInterviewer({ text, autoPlay = true }) {
   }, []);
 
   useEffect(() => {
-    if (autoPlay && text && isSupported) {
+    if (autoSpeak && text && isSupported) {
       speakText();
     }
-  }, [text]);
+  }, [text, autoSpeak]);
 
   const speakText = () => {
     if (!isSupported || !text) return;
@@ -67,6 +69,15 @@ export function VoiceInterviewer({ text, autoPlay = true }) {
     setIsPlaying(false);
   };
 
+  const toggleAutoSpeak = () => {
+    const nextState = !autoSpeak;
+    setAutoSpeak(nextState);
+    localStorage.setItem("ai_auto_speak", nextState ? "true" : "false");
+    if (!nextState && isPlaying) {
+      stopText();
+    }
+  };
+
   if (!isSupported) return null;
 
   return (
@@ -77,6 +88,15 @@ export function VoiceInterviewer({ text, autoPlay = true }) {
           <strong>AI Interviewer Voice</strong>
         </div>
         <div className="voice-controls-inline">
+          <button
+            type="button"
+            className={`btn btn-sm ${autoSpeak ? "btn-secondary" : "btn-outline"}`}
+            onClick={toggleAutoSpeak}
+            title="Toggle whether AI automatically speaks each new question"
+          >
+            {autoSpeak ? "🔊 Auto-Speak: ON" : "🔇 Auto-Speak: OFF"}
+          </button>
+
           {isPlaying ? (
             <button type="button" className="btn btn-secondary btn-sm" onClick={stopText}>
               Pause
