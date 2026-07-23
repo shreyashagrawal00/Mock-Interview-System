@@ -856,6 +856,40 @@ button {
   gap: 0.7rem;
 }
 
+.history__row-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.history__row-wrapper .history__row {
+  flex: 1;
+}
+
+.btn-delete-session {
+  background: var(--paper-raised);
+  border: 1px solid var(--line-strong);
+  color: var(--danger);
+  padding: 0.75rem 0.9rem;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-delete-session:hover {
+  background: #fde8e8;
+  border-color: var(--danger);
+  transform: scale(1.05);
+}
+
+[data-theme="dark"] .btn-delete-session:hover {
+  background: #3b1915;
+}
+
 .history__row {
   display: flex;
   justify-content: space-between;

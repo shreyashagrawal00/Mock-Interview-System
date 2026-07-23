@@ -17,6 +17,18 @@ export default function History() {
       .finally(() => setLoading(false));
   }, []);
 
+  async function handleDelete(e, id) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!window.confirm("Are you sure you want to delete this interview session?")) return;
+    try {
+      await api.deleteSession(id);
+      setSessions((prev) => prev.filter((s) => s._id !== id));
+    } catch (err) {
+      alert("Failed to delete session: " + err.message);
+    }
+  }
+
   if (loading) return <Loader text="Pulling your session log" />;
   if (error) return <div className="alert">{error}</div>;
 
@@ -36,24 +48,33 @@ export default function History() {
 
       <div className="history__list">
         {sessions.map((s) => (
-          <Link
-            to={s.status === "completed" ? `/results/${s._id}` : `/interview/${s._id}`}
-            className="history__row"
-            key={s._id}
-          >
-            <div className="history__row-main">
-              <span className="history__role">{s.roleTitle}</span>
-              <span className={`badge badge--${s.status}`}>
-                {s.status === "completed" ? "Completed" : "In progress"}
-              </span>
-            </div>
-            <div className="history__row-meta">
-              <span>{s.createdAt ? new Date(s.createdAt).toLocaleString() : ""}</span>
-              {s.status === "completed" && (
-                <span className="history__score">{(Number(s.overallAverage) || 0).toFixed(1)}/10</span>
-              )}
-            </div>
-          </Link>
+          <div key={s._id} className="history__row-wrapper">
+            <Link
+              to={s.status === "completed" ? `/results/${s._id}` : `/interview/${s._id}`}
+              className="history__row"
+            >
+              <div className="history__row-main">
+                <span className="history__role">{s.roleTitle}</span>
+                <span className={`badge badge--${s.status}`}>
+                  {s.status === "completed" ? "Completed" : "In progress"}
+                </span>
+              </div>
+              <div className="history__row-meta">
+                <span>{s.createdAt ? new Date(s.createdAt).toLocaleString() : ""}</span>
+                {s.status === "completed" && (
+                  <span className="history__score">{(Number(s.overallAverage) || 0).toFixed(1)}/10</span>
+                )}
+              </div>
+            </Link>
+            <button
+              type="button"
+              className="btn-delete-session"
+              onClick={(e) => handleDelete(e, s._id)}
+              title="Delete session"
+            >
+              🗑️
+            </button>
+          </div>
         ))}
       </div>
     </section>

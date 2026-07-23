@@ -325,4 +325,16 @@ router.post("/:id/restart", async (req, res) => {
   }
 });
 
+// DELETE /api/session/:id -> Delete a session permanently
+router.delete("/:id", async (req, res) => {
+  try {
+    const deleted = await Session.findByIdAndDelete(req.params.id);
+    if (!deleted) return res.status(404).json({ error: "Session not found" });
+    res.json({ message: "Session deleted successfully", sessionId: req.params.id });
+  } catch (err) {
+    console.error("[session/delete]", err.message);
+    res.status(500).json({ error: "Failed to delete session", detail: err.message });
+  }
+});
+
 module.exports = router;

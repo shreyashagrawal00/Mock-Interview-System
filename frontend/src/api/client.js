@@ -32,4 +32,5 @@ export const api = {
   toggleBookmark: (sessionId, qIndex) =>
     request(`/session/${sessionId}/question/${qIndex}/bookmark`, { method: "POST" }),
   getAnalytics: () => request("/session/analytics/overview"),
+  deleteSession: (sessionId) => request(`/session/${sessionId}`, { method: "DELETE" }),
 };
