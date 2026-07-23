@@ -264,6 +264,50 @@ button {
   margin: 0;
 }
 
+.role-filter-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.8rem;
+  flex-wrap: wrap;
+}
+
+.filter-tab {
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.55rem 1.15rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: transform 0.12s ease, background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.filter-tab:hover {
+  border-color: var(--sage);
+  color: var(--ink);
+  transform: translateY(-1px);
+}
+
+.filter-tab.is-active {
+  background: var(--ink);
+  color: #fff;
+  border-color: var(--ink);
+}
+
+.filter-tab--fresher.is-active {
+  background: #137333;
+  color: #fff;
+  border-color: #137333;
+}
+
+.filter-tab--upgraded.is-active {
+  background: #6b21a8;
+  color: #fff;
+  border-color: #6b21a8;
+}
+
 .role-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -290,6 +334,14 @@ button {
   border-color: var(--sage);
 }
 
+.role-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 0.2rem;
+}
+
 .role-card__badge {
   width: 42px;
   height: 42px;
@@ -298,7 +350,27 @@ button {
   place-items: center;
   background: var(--sage-tint);
   color: var(--sage-dark);
-  margin-bottom: 0.2rem;
+}
+
+.level-pill {
+  font-size: 0.72rem;
+  font-weight: 650;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.level-pill--fresher {
+  background: #e6f4ea;
+  color: #137333;
+  border: 1px solid #ceebd6;
+}
+
+.level-pill--upgraded {
+  background: #f3e8ff;
+  color: #6b21a8;
+  border: 1px solid #e9d5ff;
 }
 
 .role-card__title {

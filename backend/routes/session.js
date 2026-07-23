@@ -25,6 +25,7 @@ router.post("/start", async (req, res) => {
     const question = await generateQuestion({
       roleTitle: role.title,
       focus: role.focus,
+      level: role.level,
       previousQuestions: [],
       questionNumber: 1,
       totalQuestions: questionCount,
@@ -63,8 +64,9 @@ router.post("/:id/answer", async (req, res) => {
     const currentQ = session.questions[currentIndex];
 
     const evaluation = await evaluateAnswer({
-      roleTitle: role.title,
-      focus: role.focus,
+      roleTitle: role ? role.title : session.roleTitle,
+      focus: role ? role.focus : "",
+      level: role ? role.level : "",
       question: currentQ.question,
       answer,
     });
@@ -104,6 +106,7 @@ router.post("/:id/answer", async (req, res) => {
       nextQuestion = await generateQuestion({
         roleTitle: role.title,
         focus: role.focus,
+        level: role.level,
         previousQuestions: session.questions.map((q) => q.question),
         questionNumber: session.questions.length + 1,
         totalQuestions: session.totalQuestions,

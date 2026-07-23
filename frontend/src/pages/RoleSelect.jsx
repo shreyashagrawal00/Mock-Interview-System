@@ -6,6 +6,7 @@ import Loader from "../components/Loader.jsx";
 
 export default function RoleSelect() {
   const [roles, setRoles] = useState([]);
+  const [activeFilter, setActiveFilter] = useState("all"); // "all" | "fresher" | "upgraded"
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState("");
@@ -31,6 +32,22 @@ export default function RoleSelect() {
     }
   }
 
+  const filteredRoles = roles.filter((role) => {
+    const isFresher =
+      role.levelType === "fresher" ||
+      (role.level && role.level.toLowerCase().includes("fresher")) ||
+      (role.title && role.title.toLowerCase().includes("fresher"));
+
+    const isUpgraded =
+      role.levelType === "upgraded" ||
+      (role.level && (role.level.toLowerCase().includes("upgraded") || role.level.toLowerCase().includes("senior"))) ||
+      (role.title && (role.title.toLowerCase().includes("upgraded") || role.title.toLowerCase().includes("senior")));
+
+    if (activeFilter === "fresher") return isFresher;
+    if (activeFilter === "upgraded") return isUpgraded;
+    return true;
+  });
+
   return (
     <section className="hero">
       <div className="hero__intro">
@@ -39,8 +56,7 @@ export default function RoleSelect() {
           Practice like the interview <em>already started.</em>
         </h1>
         <p className="hero__sub">
-          Pick a role. Gemini asks the questions, listens to what you actually say — typed or spoken — and
-          grades you on communication, technical depth, and confidence, the same way a real panel would.
+          Pick your role and target level below. Questions and scoring criteria automatically adapt — from fundamental concepts for Freshers to high-scale architecture for Senior Engineers.
         </p>
       </div>
 
@@ -48,11 +64,34 @@ export default function RoleSelect() {
       {error && <div className="alert">{error}</div>}
 
       {!loading && (
-        <div className="role-grid">
-          {roles.map((role) => (
-            <RoleCard key={role.id} role={role} onSelect={handleSelect} disabled={starting} />
-          ))}
-        </div>
+        <>
+          <div className="role-filter-tabs">
+            <button
+              className={`filter-tab ${activeFilter === "all" ? "is-active" : ""}`}
+              onClick={() => setActiveFilter("all")}
+            >
+              All Roles ({roles.length})
+            </button>
+            <button
+              className={`filter-tab filter-tab--fresher ${activeFilter === "fresher" ? "is-active" : ""}`}
+              onClick={() => setActiveFilter("fresher")}
+            >
+              🌱 Fresher / Entry Level
+            </button>
+            <button
+              className={`filter-tab filter-tab--upgraded ${activeFilter === "upgraded" ? "is-active" : ""}`}
+              onClick={() => setActiveFilter("upgraded")}
+            >
+              ⚡ Senior / Upgraded
+            </button>
+          </div>
+
+          <div className="role-grid">
+            {filteredRoles.map((role) => (
+              <RoleCard key={role.id} role={role} onSelect={handleSelect} disabled={starting} />
+            ))}
+          </div>
+        </>
       )}
 
       {starting && (

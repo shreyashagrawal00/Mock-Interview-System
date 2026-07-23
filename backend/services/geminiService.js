@@ -117,7 +117,7 @@ function parseJson(rawText) {
  * Generates the next interview question for a given role, aware of
  * previously asked questions so it doesn't repeat itself.
  */
-async function generateQuestion({ roleTitle, focus, previousQuestions = [], questionNumber, totalQuestions }) {
+async function generateQuestion({ roleTitle, focus, level, previousQuestions = [], questionNumber, totalQuestions }) {
   const historyBlock =
     previousQuestions.length > 0
       ? `Questions already asked in this session (do not repeat these or close variants):\n${previousQuestions
@@ -125,15 +125,30 @@ async function generateQuestion({ roleTitle, focus, previousQuestions = [], ques
           .join("\n")}`
       : "This is the first question of the session.";
 
+  const isFresher =
+    (level && level.toLowerCase().includes("fresher")) ||
+    (roleTitle && roleTitle.toLowerCase().includes("fresher"));
+
+  const levelGuidance = isFresher
+    ? `THIS CANDIDATE IS A FRESHER / ENTRY-LEVEL APPLICANT.
+Target difficulty: BEGINNER to INTERMEDIATE.
+Focus on core concepts, fundamental principles, basic syntax, coding logic, and foundational understanding.
+DO NOT ask complex system architecture, high-throughput scaling, or multi-year industry trade-off questions.`
+    : `THIS CANDIDATE IS AN UPGRADED / SENIOR LEVEL APPLICANT.
+Target difficulty: ADVANCED / SENIOR ARCHITECT.
+Focus on real-world system trade-offs, high-scale performance, edge cases, microservices/data pipelines, and deep technical depth.`;
+
   const prompt = `You are an experienced technical interviewer conducting a mock interview for the role of "${roleTitle}".
 Role focus areas: ${focus}.
+Role Level: ${level || (isFresher ? "Fresher / Entry Level" : "Senior / Upgraded")}.
+
+${levelGuidance}
 
 ${historyBlock}
 
 Generate question number ${questionNumber} of ${totalQuestions}.
 Rules:
-- Keep it realistic, like a real interviewer would ask.
-- Vary difficulty and topic across the session (mix conceptual, practical, and scenario-based questions).
+- Strictly tailor the question difficulty and scenario to the candidate's level ("${roleTitle}") as specified above.
 - One question only, concise (1-3 sentences).
 - No preamble, no "Sure, here is a question".
 
@@ -149,8 +164,18 @@ Respond ONLY with strict JSON, no markdown fences, in this exact shape:
 /**
  * Evaluates a candidate's answer and returns structured scoring + feedback.
  */
-async function evaluateAnswer({ roleTitle, focus, question, answer }) {
-  const prompt = `You are grading a candidate's answer in a mock interview for the role of "${roleTitle}" (focus: ${focus}).
+async function evaluateAnswer({ roleTitle, focus, level, question, answer }) {
+  const isFresher =
+    (level && level.toLowerCase().includes("fresher")) ||
+    (roleTitle && roleTitle.toLowerCase().includes("fresher"));
+
+  const levelCriteria = isFresher
+    ? `Grade the answer according to FRESHER / ENTRY-LEVEL expectations. Be encouraging on fundamentals.`
+    : `Grade the answer according to SENIOR / UPGRADED ARCHITECT expectations. Require high technical depth and clear trade-off analysis.`;
+
+  const prompt = `You are grading a candidate's answer in a mock interview for the role of "${roleTitle}" (focus: ${focus}, Seniority: ${level || (isFresher ? "Fresher" : "Senior")}).
+
+${levelCriteria}
 
 Question asked: "${question}"
 Candidate's answer: "${answer || "(no answer provided)"}"
