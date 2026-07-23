@@ -7,8 +7,13 @@ const sessionRoute = require("./routes/session");
 
 const app = express();
 
-const allowedOrigins = (process.env.CLIENT_ORIGIN || "http://localhost:5173").split(",");
-app.use(cors({ origin: allowedOrigins }));
+const allowedOrigins = process.env.CLIENT_ORIGIN || process.env.CLIENT_URL;
+app.use(
+  cors({
+    origin: allowedOrigins ? allowedOrigins.split(",") : "*",
+    credentials: true,
+  })
+);
 app.use(express.json({ limit: "1mb" }));
 
 app.get("/api/health", (req, res) => {
