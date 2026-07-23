@@ -27,14 +27,21 @@ export default function Interview() {
   const recognitionRef = useRef(null);
 
   useEffect(() => {
+    return () => {
+      recognitionRef.current?.stop();
+    };
+  }, []);
+
+  useEffect(() => {
     // Hydrate from an existing session on refresh/navigation.
     api
       .getSession(sessionId)
       .then(({ session }) => {
+        if (!session || !session.questions?.length) return;
         const last = session.questions[session.questions.length - 1];
         setQuestionNumber(session.questions.length);
-        setTotalQuestions(session.totalQuestions);
-        setQuestion(last.question);
+        setTotalQuestions(session.totalQuestions || 5);
+        setQuestion(last.question || "");
         if (session.status === "completed") {
           navigate(`/results/${sessionId}`, { replace: true });
         }

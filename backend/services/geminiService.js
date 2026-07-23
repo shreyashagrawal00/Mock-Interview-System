@@ -11,9 +11,49 @@ function getClient() {
   return client;
 }
 
-function getModel() {
-  const modelName = process.env.GEMINI_MODEL || "gemini-flash-latest";
-  return getClient().getGenerativeModel({ model: modelName });
+const FALLBACK_MODELS = [
+  process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
+  "gemini-flash-lite-latest",
+  "gemini-3.5-flash",
+  "gemini-3.6-flash",
+  "gemini-3.1-flash-lite",
+  "gemini-flash-latest",
+];
+
+async function generateWithFallback(prompt) {
+  const genAI = getClient();
+  let lastErr = null;
+
+  for (const modelName of FALLBACK_MODELS) {
+    if (!modelName) continue;
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const model = genAI.getGenerativeModel({ model: modelName });
+        const result = await model.generateContent(prompt);
+        return result.response.text();
+      } catch (err) {
+        lastErr = err;
+        console.warn(`[gemini] Model '${modelName}' attempt ${attempt} failed: ${err.message.split("\n")[0]}`);
+
+        const isTransient =
+          err.status === 503 ||
+          err.status === 429 ||
+          (err.message &&
+            (err.message.includes("503") ||
+              err.message.includes("high demand") ||
+              err.message.includes("quota") ||
+              err.message.includes("Service Unavailable")));
+
+        if (isTransient && attempt === 1) {
+          await new Promise((r) => setTimeout(r, 1000));
+          continue;
+        }
+        break; // Fallback to next model in sequence
+      }
+    }
+  }
+
+  throw lastErr;
 }
 
 // Strips markdown code fences and parses JSON safely.
@@ -22,7 +62,16 @@ function parseJson(rawText) {
   const start = cleaned.indexOf("{");
   const end = cleaned.lastIndexOf("}");
   const jsonSlice = start !== -1 && end !== -1 ? cleaned.slice(start, end + 1) : cleaned;
-  return JSON.parse(jsonSlice);
+  try {
+    return JSON.parse(jsonSlice);
+  } catch (err) {
+    try {
+      const sanitized = jsonSlice.replace(/[\u0000-\u001F]+/g, " ");
+      return JSON.parse(sanitized);
+    } catch (e) {
+      throw new Error(`Failed to parse AI response: ${err.message}`);
+    }
+  }
 }
 
 /**
@@ -30,8 +79,6 @@ function parseJson(rawText) {
  * previously asked questions so it doesn't repeat itself.
  */
 async function generateQuestion({ roleTitle, focus, previousQuestions = [], questionNumber, totalQuestions }) {
-  const model = getModel();
-
   const historyBlock =
     previousQuestions.length > 0
       ? `Questions already asked in this session (do not repeat these or close variants):\n${previousQuestions
@@ -54,8 +101,7 @@ Rules:
 Respond ONLY with strict JSON, no markdown fences, in this exact shape:
 {"question": "the interview question text"}`;
 
-  const result = await model.generateContent(prompt);
-  const text = result.response.text();
+  const text = await generateWithFallback(prompt);
   const parsed = parseJson(text);
   if (!parsed.question) throw new Error("Gemini did not return a question");
   return parsed.question;
@@ -65,8 +111,6 @@ Respond ONLY with strict JSON, no markdown fences, in this exact shape:
  * Evaluates a candidate's answer and returns structured scoring + feedback.
  */
 async function evaluateAnswer({ roleTitle, focus, question, answer }) {
-  const model = getModel();
-
   const prompt = `You are grading a candidate's answer in a mock interview for the role of "${roleTitle}" (focus: ${focus}).
 
 Question asked: "${question}"
@@ -92,8 +136,7 @@ Respond ONLY with strict JSON, no markdown fences, in this exact shape:
   "improvementTips": ["string", "string"]
 }`;
 
-  const result = await model.generateContent(prompt);
-  const text = result.response.text();
+  const text = await generateWithFallback(prompt);
   const parsed = parseJson(text);
 
   const clamp = (n) => Math.max(0, Math.min(10, Number(n) || 0));
@@ -113,8 +156,6 @@ Respond ONLY with strict JSON, no markdown fences, in this exact shape:
  * Generates a short closing summary once the session is complete.
  */
 async function generateSessionSummary({ roleTitle, overallAverage, questions }) {
-  const model = getModel();
-
   const transcript = questions
     .map(
       (q, i) =>
@@ -134,8 +175,7 @@ Write a short closing summary (3-4 sentences) in a warm but honest coaching tone
 Respond ONLY with strict JSON, no markdown fences, in this exact shape:
 {"summary": "string"}`;
 
-  const result = await model.generateContent(prompt);
-  const text = result.response.text();
+  const text = await generateWithFallback(prompt);
   const parsed = parseJson(text);
   return parsed.summary || "Session complete. Review your per-question feedback above.";
 }

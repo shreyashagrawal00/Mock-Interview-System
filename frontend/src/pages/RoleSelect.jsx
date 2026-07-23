@@ -14,7 +14,7 @@ export default function RoleSelect() {
   useEffect(() => {
     api
       .getRoles()
-      .then((data) => setRoles(data.roles))
+      .then((data) => setRoles(data?.roles || []))
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, []);

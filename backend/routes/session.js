@@ -81,10 +81,11 @@ router.post("/:id/answer", async (req, res) => {
 
     if (isLast) {
       const allScores = session.questions.map((q) => q.score);
+      const count = allScores.length || 1;
       const overallScore = {
-        communication: allScores.reduce((a, s) => a + s.communication, 0) / allScores.length,
-        technicalDepth: allScores.reduce((a, s) => a + s.technicalDepth, 0) / allScores.length,
-        confidence: allScores.reduce((a, s) => a + s.confidence, 0) / allScores.length,
+        communication: allScores.reduce((a, s) => a + (Number(s?.communication) || 0), 0) / count,
+        technicalDepth: allScores.reduce((a, s) => a + (Number(s?.technicalDepth) || 0), 0) / count,
+        confidence: allScores.reduce((a, s) => a + (Number(s?.confidence) || 0), 0) / count,
       };
       const overallAverage = average(overallScore);
 
@@ -170,6 +171,7 @@ router.post("/:id/restart", async (req, res) => {
     const prev = await Session.findById(req.params.id);
     if (!prev) return res.status(404).json({ error: "Session not found" });
     const role = getRoleById(prev.roleId);
+    if (!role) return res.status(404).json({ error: "Role not found for session" });
 
     const question = await generateQuestion({
       roleTitle: role.title,

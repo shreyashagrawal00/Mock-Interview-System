@@ -1,7 +1,7 @@
 // A ruled-paper "meter" gauge — the signature element of the results report card.
 // Needle rotates from -90deg (score 0) to +90deg (score 10).
 export default function ScoreGauge({ score = 0, label = "Overall", size = 200 }) {
-  const clamped = Math.max(0, Math.min(10, score));
+  const clamped = Math.max(0, Math.min(10, Number(score) || 0));
   const angle = -90 + (clamped / 10) * 180;
 
   const ticks = Array.from({ length: 11 }, (_, i) => i);

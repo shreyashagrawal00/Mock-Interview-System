@@ -12,7 +12,7 @@ export default function History() {
   useEffect(() => {
     api
       .getHistory()
-      .then((data) => setSessions(data.sessions))
+      .then((data) => setSessions(data?.sessions || []))
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, []);
@@ -48,8 +48,10 @@ export default function History() {
               </span>
             </div>
             <div className="history__row-meta">
-              <span>{new Date(s.createdAt).toLocaleString()}</span>
-              {s.status === "completed" && <span className="history__score">{s.overallAverage.toFixed(1)}/10</span>}
+              <span>{s.createdAt ? new Date(s.createdAt).toLocaleString() : ""}</span>
+              {s.status === "completed" && (
+                <span className="history__score">{(Number(s.overallAverage) || 0).toFixed(1)}/10</span>
+              )}
             </div>
           </Link>
         ))}
