@@ -17,11 +17,19 @@ async function request(path, options = {}) {
 
 export const api = {
   getRoles: () => request("/roles"),
-  startSession: (roleId) =>
-    request("/session/start", { method: "POST", body: JSON.stringify({ roleId }) }),
+  startSession: (config) =>
+    request("/session/start", {
+      method: "POST",
+      body: JSON.stringify(typeof config === "string" ? { roleId: config } : config),
+    }),
   submitAnswer: (sessionId, answer) =>
     request(`/session/${sessionId}/answer`, { method: "POST", body: JSON.stringify({ answer }) }),
   getSession: (sessionId) => request(`/session/${sessionId}`),
   getHistory: () => request("/session"),
   restartSession: (sessionId) => request(`/session/${sessionId}/restart`, { method: "POST" }),
+  getModelAnswer: (sessionId, qIndex) =>
+    request(`/session/${sessionId}/question/${qIndex}/model-answer`, { method: "POST" }),
+  toggleBookmark: (sessionId, qIndex) =>
+    request(`/session/${sessionId}/question/${qIndex}/bookmark`, { method: "POST" }),
+  getAnalytics: () => request("/session/analytics/overview"),
 };

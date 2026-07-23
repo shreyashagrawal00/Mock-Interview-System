@@ -5,6 +5,7 @@ import Icon from "../components/Icon.jsx";
 import ScoreGauge from "../components/ScoreGauge.jsx";
 import ScoreBar from "../components/ScoreBar.jsx";
 import Loader from "../components/Loader.jsx";
+import { exportResultsToPDF } from "../utils/pdfExporter.js";
 
 export default function Results() {
   const { sessionId } = useParams();
@@ -12,13 +13,51 @@ export default function Results() {
   const [session, setSession] = useState(null);
   const [error, setError] = useState("");
   const [restarting, setRestarting] = useState(false);
+  const [modelAnswers, setModelAnswers] = useState({});
+  const [loadingModel, setLoadingModel] = useState({});
 
   useEffect(() => {
     api
       .getSession(sessionId)
-      .then((data) => setSession(data.session))
+      .then((data) => {
+        setSession(data.session);
+        // Pre-populate model answers if already present
+        if (data.session?.questions) {
+          const maMap = {};
+          data.session.questions.forEach((q, idx) => {
+            if (q.modelAnswer) maMap[idx] = q.modelAnswer;
+          });
+          setModelAnswers(maMap);
+        }
+      })
       .catch((err) => setError(err.message));
   }, [sessionId]);
+
+  async function handleFetchModelAnswer(qIndex) {
+    setLoadingModel((prev) => ({ ...prev, [qIndex]: true }));
+    try {
+      const data = await api.getModelAnswer(sessionId, qIndex);
+      setModelAnswers((prev) => ({ ...prev, [qIndex]: data.modelAnswer }));
+    } catch (err) {
+      alert("Failed to load model answer: " + err.message);
+    } finally {
+      setLoadingModel((prev) => ({ ...prev, [qIndex]: false }));
+    }
+  }
+
+  async function handleToggleBookmark(qIndex) {
+    try {
+      const data = await api.toggleBookmark(sessionId, qIndex);
+      setSession((prev) => {
+        if (!prev) return prev;
+        const updatedQs = [...prev.questions];
+        updatedQs[qIndex].isBookmarked = data.isBookmarked;
+        return { ...prev, questions: updatedQs };
+      });
+    } catch (err) {
+      alert("Failed to update bookmark: " + err.message);
+    }
+  }
 
   async function handlePracticeAgain() {
     setRestarting(true);
@@ -29,6 +68,10 @@ export default function Results() {
       setError(err.message);
       setRestarting(false);
     }
+  }
+
+  function handleExportPDF() {
+    exportResultsToPDF("results-report-content", `mock-interview-${sessionId.slice(-6)}.pdf`);
   }
 
   function handleDownloadReport() {
@@ -87,10 +130,6 @@ export default function Results() {
     URL.revokeObjectURL(url);
   }
 
-  function handlePrintPDF() {
-    window.print();
-  }
-
   if (error) return <div className="alert">{error}</div>;
   if (!session) return <Loader text="Pulling up your report card" />;
 
@@ -98,59 +137,91 @@ export default function Results() {
 
   return (
     <section className="results">
-      <div className="results__header">
-        <span className="eyebrow">Report card &middot; {roleTitle}</span>
-        <h1 className="results__title">Here&apos;s how it went.</h1>
-      </div>
-
-      <div className="card results__summary">
-        <ScoreGauge score={overallAverage} label="Overall score" size={220} />
-        <div className="results__breakdown">
-          <ScoreBar label="Communication" value={overallScore.communication || 0} />
-          <ScoreBar label="Technical depth" value={overallScore.technicalDepth || 0} />
-          <ScoreBar label="Confidence" value={overallScore.confidence || 0} />
+      <div id="results-report-content">
+        <div className="results__header">
+          <span className="eyebrow">Report card &middot; {roleTitle}</span>
+          <h1 className="results__title">Here&apos;s how it went.</h1>
         </div>
-      </div>
 
-      {summary && (
-        <div className="card results__coach">
-          <p className="results__coach-eyebrow">
-            <Icon name="sparkle" size={16} /> Coach&apos;s note
-          </p>
-          <p>{summary}</p>
-        </div>
-      )}
-
-      <h2 className="results__subhead">Question by question</h2>
-      <div className="results__questions">
-        {questions.map((q, i) => (
-          <div className="card qa-card" key={i}>
-            <p className="qa-card__eyebrow">Question {i + 1}</p>
-            <p className="qa-card__question">{q.question}</p>
-            <p className="qa-card__answer">{q.answer || <em>No answer given</em>}</p>
-            <div className="qa-card__scores">
-              <ScoreBar label="Communication" value={q.score?.communication || 0} />
-              <ScoreBar label="Technical depth" value={q.score?.technicalDepth || 0} />
-              <ScoreBar label="Confidence" value={q.score?.confidence || 0} />
-            </div>
-            <p className="qa-card__feedback">{q.feedback}</p>
-            {q.improvementTips?.length > 0 && (
-              <ul className="qa-card__tips">
-                {q.improvementTips.map((tip, ti) => (
-                  <li key={ti}>{tip}</li>
-                ))}
-              </ul>
-            )}
+        <div className="card results__summary">
+          <ScoreGauge score={overallAverage} label="Overall score" size={220} />
+          <div className="results__breakdown">
+            <ScoreBar label="Communication" value={overallScore.communication || 0} />
+            <ScoreBar label="Technical depth" value={overallScore.technicalDepth || 0} />
+            <ScoreBar label="Confidence" value={overallScore.confidence || 0} />
           </div>
-        ))}
+        </div>
+
+        {summary && (
+          <div className="card results__coach">
+            <p className="results__coach-eyebrow">
+              <Icon name="sparkle" size={16} /> Coach&apos;s note
+            </p>
+            <p>{summary}</p>
+          </div>
+        )}
+
+        <h2 className="results__subhead">Question by question breakdown</h2>
+        <div className="results__questions">
+          {questions.map((q, i) => (
+            <div className="card qa-card" key={i}>
+              <div className="qa-card-header">
+                <p className="qa-card__eyebrow">Question {i + 1}</p>
+                <button
+                  type="button"
+                  className={`btn-bookmark ${q.isBookmarked ? "bookmarked" : ""}`}
+                  onClick={() => handleToggleBookmark(i)}
+                  title="Bookmark question for review"
+                >
+                  {q.isBookmarked ? "★ Bookmarked" : "☆ Bookmark"}
+                </button>
+              </div>
+
+              <p className="qa-card__question">{q.question}</p>
+              <p className="qa-card__answer">{q.answer || <em>No answer given</em>}</p>
+              <div className="qa-card__scores">
+                <ScoreBar label="Communication" value={q.score?.communication || 0} />
+                <ScoreBar label="Technical depth" value={q.score?.technicalDepth || 0} />
+                <ScoreBar label="Confidence" value={q.score?.confidence || 0} />
+              </div>
+              <p className="qa-card__feedback">{q.feedback}</p>
+              {q.improvementTips?.length > 0 && (
+                <ul className="qa-card__tips">
+                  {q.improvementTips.map((tip, ti) => (
+                    <li key={ti}>{tip}</li>
+                  ))}
+                </ul>
+              )}
+
+              {/* Model Benchmark Answer Section */}
+              <div className="model-answer-section">
+                {modelAnswers[i] ? (
+                  <div className="model-answer-box">
+                    <strong>💡 AI Benchmark Model Answer:</strong>
+                    <p>{modelAnswers[i]}</p>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm"
+                    onClick={() => handleFetchModelAnswer(i)}
+                    disabled={loadingModel[i]}
+                  >
+                    {loadingModel[i] ? "Generating Benchmark Answer..." : "✨ See AI Model Answer"}
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="results__actions">
-        <button className="btn btn--primary" onClick={handleDownloadReport}>
-          <Icon name="download" size={16} /> Download Report (.txt)
+        <button className="btn btn--primary" onClick={handleExportPDF}>
+          <Icon name="download" size={16} /> Export PDF Report
         </button>
-        <button className="btn btn--ghost" onClick={handlePrintPDF}>
-          <Icon name="printer" size={16} /> Save / Print PDF
+        <button className="btn btn--ghost" onClick={handleDownloadReport}>
+          <Icon name="download" size={16} /> Download .txt Report
         </button>
         <button className="btn btn--ghost" onClick={handlePracticeAgain} disabled={restarting}>
           <Icon name="refresh" size={16} />

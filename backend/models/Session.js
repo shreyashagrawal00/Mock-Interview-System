@@ -16,6 +16,8 @@ const QASchema = new mongoose.Schema(
     score: { type: ScoreSchema, default: () => ({}) },
     feedback: { type: String, default: "" },
     improvementTips: { type: [String], default: [] },
+    modelAnswer: { type: String, default: "" },
+    isBookmarked: { type: Boolean, default: false },
     answeredAt: { type: Date },
   },
   { _id: false }
@@ -25,6 +27,13 @@ const SessionSchema = new mongoose.Schema(
   {
     roleId: { type: String, required: true },
     roleTitle: { type: String, required: true },
+    mode: { type: String, enum: ["standard", "timed", "star", "coding"], default: "standard" },
+    level: { type: String, default: "Fresher / Entry-Level" },
+    timerSeconds: { type: Number, default: 0 },
+    customContext: {
+      resume: { type: String, default: "" },
+      jobDescription: { type: String, default: "" },
+    },
     status: { type: String, enum: ["in_progress", "completed"], default: "in_progress" },
     questions: { type: [QASchema], default: [] },
     totalQuestions: { type: Number, default: 5 },

@@ -117,7 +117,7 @@ function parseJson(rawText) {
  * Generates the next interview question for a given role, aware of
  * previously asked questions so it doesn't repeat itself.
  */
-async function generateQuestion({ roleTitle, focus, level, previousQuestions = [], questionNumber, totalQuestions }) {
+async function generateQuestion({ roleTitle, focus, level, mode, resume, jobDescription, previousQuestions = [], questionNumber, totalQuestions }) {
   const historyBlock =
     previousQuestions.length > 0
       ? `Questions already asked in this session (do not repeat these or close variants):\n${previousQuestions
@@ -129,20 +129,27 @@ async function generateQuestion({ roleTitle, focus, level, previousQuestions = [
     (level && level.toLowerCase().includes("fresher")) ||
     (roleTitle && roleTitle.toLowerCase().includes("fresher"));
 
-  const levelGuidance = isFresher
-    ? `THIS CANDIDATE IS A FRESHER / ENTRY-LEVEL APPLICANT.
-Target difficulty: BEGINNER to INTERMEDIATE.
-Focus on core concepts, fundamental principles, basic syntax, coding logic, and foundational understanding.
-DO NOT ask complex system architecture, high-throughput scaling, or multi-year industry trade-off questions.`
-    : `THIS CANDIDATE IS AN UPGRADED / SENIOR LEVEL APPLICANT.
-Target difficulty: ADVANCED / SENIOR ARCHITECT.
-Focus on real-world system trade-offs, high-scale performance, edge cases, microservices/data pipelines, and deep technical depth.`;
+  let modeGuidance = "";
+  if (mode === "star") {
+    modeGuidance = "IMPORTANT: Frame this as a Behavioral STAR Method question (Situation, Task, Action, Result).";
+  } else if (mode === "coding") {
+    modeGuidance = "IMPORTANT: Ask a practical programming or algorithmic coding prompt suitable for live code submission.";
+  } else if (mode === "timed") {
+    modeGuidance = "IMPORTANT: Make the question concise and targeted for a fast-paced timed response.";
+  }
+
+  const contextBlock = [
+    jobDescription ? `Target Job Description: ${jobDescription}` : "",
+    resume ? `Candidate Resume Highlights: ${resume}` : "",
+  ].filter(Boolean).join("\n");
 
   const prompt = `You are an experienced technical interviewer conducting a mock interview for the role of "${roleTitle}".
 Role focus areas: ${focus}.
 Role Level: ${level || (isFresher ? "Fresher / Entry Level" : "Senior / Upgraded")}.
 
-${levelGuidance}
+${modeGuidance}
+
+${contextBlock ? `Context:\n${contextBlock}\n` : ""}
 
 ${historyBlock}
 
@@ -164,7 +171,7 @@ Respond ONLY with strict JSON, no markdown fences, in this exact shape:
 /**
  * Evaluates a candidate's answer and returns structured scoring + feedback.
  */
-async function evaluateAnswer({ roleTitle, focus, level, question, answer }) {
+async function evaluateAnswer({ roleTitle, focus, level, mode, question, answer }) {
   const isFresher =
     (level && level.toLowerCase().includes("fresher")) ||
     (roleTitle && roleTitle.toLowerCase().includes("fresher"));
@@ -173,9 +180,16 @@ async function evaluateAnswer({ roleTitle, focus, level, question, answer }) {
     ? `Grade the answer according to FRESHER / ENTRY-LEVEL expectations. Be encouraging on fundamentals.`
     : `Grade the answer according to SENIOR / UPGRADED ARCHITECT expectations. Require high technical depth and clear trade-off analysis.`;
 
+  const modeCriteria = mode === "star"
+    ? "Evaluate if the candidate clearly structured their response using Situation, Task, Action, and Result."
+    : mode === "coding"
+    ? "Evaluate the code logic, efficiency, syntax, edge cases, and clarity."
+    : "";
+
   const prompt = `You are grading a candidate's answer in a mock interview for the role of "${roleTitle}" (focus: ${focus}, Seniority: ${level || (isFresher ? "Fresher" : "Senior")}).
 
 ${levelCriteria}
+${modeCriteria}
 
 Question asked: "${question}"
 Candidate's answer: "${answer || "(no answer provided)"}"
@@ -217,6 +231,27 @@ Respond ONLY with strict JSON, no markdown fences, in this exact shape:
 }
 
 /**
+ * Generates an exemplary model answer for a question.
+ */
+async function generateModelAnswer({ question, roleTitle, focus, level }) {
+  const prompt = `You are an expert technical hiring manager for the role of "${roleTitle}" (focus: ${focus}, seniority: ${level || "Senior"}).
+
+Provide an exemplary benchmark answer to this interview question:
+"${question}"
+
+Format your response clearly:
+1. Direct high-scoring answer
+2. Key points that interviewers look for
+
+Respond ONLY with strict JSON in this exact shape:
+{"modelAnswer": "the clear exemplary model answer text"}`;
+
+  const text = await generateWithFallback(prompt);
+  const parsed = parseJson(text);
+  return parsed.modelAnswer || "A strong answer should clearly state key principles, provide concise examples, and address edge cases or trade-offs.";
+}
+
+/**
  * Generates a short closing summary once the session is complete.
  */
 async function generateSessionSummary({ roleTitle, overallAverage, questions }) {
@@ -244,4 +279,4 @@ Respond ONLY with strict JSON, no markdown fences, in this exact shape:
   return parsed.summary || "Session complete. Review your per-question feedback above.";
 }
 
-module.exports = { generateQuestion, evaluateAnswer, generateSessionSummary, callMistral };
+module.exports = { generateQuestion, evaluateAnswer, generateModelAnswer, generateSessionSummary, callMistral };
