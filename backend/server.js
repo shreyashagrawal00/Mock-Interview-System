@@ -7,10 +7,9 @@ const sessionRoute = require("./routes/session");
 
 const app = express();
 
-const allowedOrigins = process.env.CLIENT_ORIGIN || process.env.CLIENT_URL;
 app.use(
   cors({
-    origin: allowedOrigins ? allowedOrigins.split(",") : "*",
+    origin: (origin, callback) => callback(null, true),
     credentials: true,
   })
 );
