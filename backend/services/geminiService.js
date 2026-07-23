@@ -20,40 +20,79 @@ const FALLBACK_MODELS = [
   "gemini-flash-latest",
 ];
 
+async function callMistral(prompt) {
+  const apiKey = process.env.MISTRAL_API_KEY;
+  if (!apiKey) throw new Error("MISTRAL_API_KEY is not configured in backend/.env");
+
+  const res = await fetch("https://api.mistral.ai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: process.env.MISTRAL_MODEL || "mistral-small-latest",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.7,
+    }),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error?.message || `Mistral API error (${res.status})`);
+  }
+
+  return data.choices?.[0]?.message?.content || "";
+}
+
 async function generateWithFallback(prompt) {
-  const genAI = getClient();
   let lastErr = null;
 
-  for (const modelName of FALLBACK_MODELS) {
-    if (!modelName) continue;
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      try {
-        const model = genAI.getGenerativeModel({ model: modelName });
-        const result = await model.generateContent(prompt);
-        return result.response.text();
-      } catch (err) {
-        lastErr = err;
-        console.warn(`[gemini] Model '${modelName}' attempt ${attempt} failed: ${err.message.split("\n")[0]}`);
+  // 1. Try Gemini models
+  if (process.env.GEMINI_API_KEY) {
+    const genAI = getClient();
+    for (const modelName of FALLBACK_MODELS) {
+      if (!modelName) continue;
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+          const model = genAI.getGenerativeModel({ model: modelName });
+          const result = await model.generateContent(prompt);
+          return result.response.text();
+        } catch (err) {
+          lastErr = err;
+          console.warn(`[gemini] Model '${modelName}' attempt ${attempt} failed: ${err.message.split("\n")[0]}`);
 
-        const isTransient =
-          err.status === 503 ||
-          err.status === 429 ||
-          (err.message &&
-            (err.message.includes("503") ||
-              err.message.includes("high demand") ||
-              err.message.includes("quota") ||
-              err.message.includes("Service Unavailable")));
+          const isTransient =
+            err.status === 503 ||
+            err.status === 429 ||
+            (err.message &&
+              (err.message.includes("503") ||
+                err.message.includes("high demand") ||
+                err.message.includes("quota") ||
+                err.message.includes("Service Unavailable")));
 
-        if (isTransient && attempt === 1) {
-          await new Promise((r) => setTimeout(r, 1000));
-          continue;
+          if (isTransient && attempt === 1) {
+            await new Promise((r) => setTimeout(r, 1000));
+            continue;
+          }
+          break; // Fallback to next model in sequence
         }
-        break; // Fallback to next model in sequence
       }
     }
   }
 
-  throw lastErr;
+  // 2. If Gemini fails or is unavailable, fallback to Mistral API
+  if (process.env.MISTRAL_API_KEY) {
+    try {
+      console.warn("[ai] Gemini models failed or unavailable. Falling back to Mistral API...");
+      return await callMistral(prompt);
+    } catch (mistralErr) {
+      console.error("[mistral] Mistral API fallback failed:", mistralErr.message);
+      throw mistralErr;
+    }
+  }
+
+  throw lastErr || new Error("No AI API provider available");
 }
 
 // Strips markdown code fences and parses JSON safely.
@@ -103,7 +142,7 @@ Respond ONLY with strict JSON, no markdown fences, in this exact shape:
 
   const text = await generateWithFallback(prompt);
   const parsed = parseJson(text);
-  if (!parsed.question) throw new Error("Gemini did not return a question");
+  if (!parsed.question) throw new Error("AI did not return a question");
   return parsed.question;
 }
 
@@ -180,4 +219,4 @@ Respond ONLY with strict JSON, no markdown fences, in this exact shape:
   return parsed.summary || "Session complete. Review your per-question feedback above.";
 }
 
-module.exports = { generateQuestion, evaluateAnswer, generateSessionSummary };
+module.exports = { generateQuestion, evaluateAnswer, generateSessionSummary, callMistral };
