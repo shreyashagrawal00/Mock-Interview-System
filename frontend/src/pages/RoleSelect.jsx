@@ -21,12 +21,23 @@ export default function RoleSelect() {
   const [resumeText, setResumeText] = useState("");
   const [jobDescription, setJobDescription] = useState("");
 
-  useEffect(() => {
+  const fetchRoles = () => {
+    setError("");
+    setLoading(true);
     api
       .getRoles()
       .then((data) => setRoles(data?.roles || []))
-      .catch((err) => setError(err.message))
+      .catch((err) => {
+        const msg = err.message === "Failed to fetch" 
+          ? "Unable to connect to the backend server. If running locally, make sure 'node server.js' is running in the backend folder. If on Render, please wait ~30s for the free server instance to wake up."
+          : err.message;
+        setError(msg);
+      })
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchRoles();
   }, []);
 
   async function handleSelect(role) {
@@ -78,7 +89,14 @@ export default function RoleSelect() {
       </div>
 
       {loading && <Loader text="Setting up the practice room" />}
-      {error && <div className="alert">{error}</div>}
+      {error && (
+        <div className="alert alert-with-action">
+          <span>{error}</span>
+          <button type="button" className="btn btn-sm btn-outline" onClick={fetchRoles}>
+            🔄 Retry Connection
+          </button>
+        </div>
+      )}
 
       {!loading && (
         <>
